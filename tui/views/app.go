@@ -96,7 +96,7 @@ func NewApp(cfg *config.Config, db *store.DB) *App {
 
 // Init implements tea.Model.
 func (a *App) Init() tea.Cmd {
-	return tea.Batch(tea.SetWindowTitle("SSH Fortress"), a.refreshData())
+	return tea.Batch(tea.SetWindowTitle("SSH-VPN"), a.refreshData())
 }
 
 // Update implements tea.Model.
@@ -197,7 +197,7 @@ func (a *App) renderSidebar() string {
 	var b strings.Builder
 
 	// Logo.
-	logo := apptheme.StyleLogo.Render("  ╔═══════════════════╗\n  ║   SSH FORTRESS     ║\n  ╚═══════════════════╝")
+	logo := apptheme.StyleLogo.Render("  ╔═══════════════════╗\n  ║     SSH-VPN        ║\n  ╚═══════════════════╝")
 	b.WriteString(logo)
 	b.WriteString("\n\n")
 
@@ -264,7 +264,7 @@ func (a *App) renderContent() string {
 }
 
 func (a *App) renderStatusBar() string {
-	left := apptheme.StyleKeyBind.Render(" SSH Fortress")
+	left := apptheme.StyleKeyBind.Render(" SSH-VPN")
 	right := ""
 	if a.notification != "" {
 		right = a.notifyStyle.Render(a.notification)

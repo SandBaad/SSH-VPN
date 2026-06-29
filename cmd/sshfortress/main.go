@@ -21,8 +21,8 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "sshfortress",
-	Short: "SSH Fortress — Enterprise-Grade SSH Manager",
-	Long: `SSH Fortress is a modern, high-performance SSH tunnel and user
+	Short: "SSH-VPN — Enterprise-Grade SSH Manager",
+	Long: `SSH-VPN is a modern, high-performance SSH tunnel and user
 management system built in Go. It provides a beautiful terminal UI
 for managing SSH users, tunnels, BadVPN, and network optimization.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -45,7 +45,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("SSH Fortress v%s\n", Version)
+		fmt.Printf("SSH-VPN v%s\n", Version)
 	},
 }
 

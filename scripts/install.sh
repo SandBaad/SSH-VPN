@@ -1,6 +1,6 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#  SSH Fortress — Auto Installer
+#  SSH-VPN — Auto Installer
 #  Enterprise-Grade SSH Manager for Linux Servers
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -30,24 +30,14 @@ NC='\033[0m'
 # ─── Helper Functions ────────────────────────────────────────────────────────
 print_banner() {
     echo -e "${CYAN}"
-    echo "  ╔═══════════════════════════════════════════════════════╗"
-    echo "  ║                                                       ║"
-    echo "  ║   ███████╗███████╗██╗  ██╗                           ║"
-    echo "  ║   ██╔════╝██╔════╝██║  ██║                           ║"
-    echo "  ║   ███████╗███████╗███████║                           ║"
-    echo "  ║   ╚════██║╚════██║██╔══██║                           ║"
-    echo "  ║   ███████║███████║██║  ██║                           ║"
-    echo "  ║   ╚══════╝╚══════╝╚═╝  ╚═╝                          ║"
-    echo "  ║                                                       ║"
-    echo "  ║   ███████╗ ██████╗ ██████╗ ████████╗██████╗          ║"
-    echo "  ║   ██╔════╝██╔═══██╗██╔══██╗╚══██╔══╝██╔══██╗        ║"
-    echo "  ║   █████╗  ██║   ██║██████╔╝   ██║   ██████╔╝        ║"
-    echo "  ║   ██╔══╝  ██║   ██║██╔══██╗   ██║   ██╔══██╗        ║"
-    echo "  ║   ██║     ╚██████╔╝██║  ██║   ██║   ██║  ██║        ║"
-    echo "  ║   ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝        ║"
-    echo "  ║                                                       ║"
-    echo "  ║          Enterprise-Grade SSH Manager v1.0.0          ║"
-    echo "  ╚═══════════════════════════════════════════════════════╝"
+    echo "   ███████╗███████╗██╗  ██╗      ██╗   ██╗██████╗ ███╗   ██╗"
+    echo "   ██╔════╝██╔════╝██║  ██║      ██║   ██║██╔══██╗████╗  ██║"
+    echo "   ███████╗███████╗███████║█████╗██║   ██║██████╔╝██╔██╗ ██║"
+    echo "   ╚════██║╚════██║██╔══██║╚════╝╚██╗ ██╔╝██╔═══╝ ██║╚██╗██║"
+    echo "   ███████║███████║██║  ██║       ╚████╔╝ ██║     ██║ ╚████║"
+    echo "   ╚══════╝╚══════╝╚═╝  ╚═╝        ╚═══╝  ╚═╝     ╚═╝  ╚═══╝"
+    echo ""
+    echo -e "          ${WHITE}Enterprise-Grade SSH Manager v1.0.0${NC}"
     echo -e "${NC}"
 }
 
@@ -148,7 +138,7 @@ create_directories() {
 }
 
 download_binary() {
-    step "Downloading SSH Fortress"
+    step "Downloading SSH-VPN"
 
     local url="https://github.com/${REPO}/releases/latest/download/${APP_NAME}-${BINARY_ARCH}"
     local dest="${INSTALL_DIR}/${APP_NAME}"
@@ -243,7 +233,7 @@ install_badvpn() {
         success "BadVPN installed to ${badvpn_path}"
     else
         warn "Could not download BadVPN. You can install it later."
-        warn "SSH Fortress will work without it (UDP forwarding disabled)."
+        warn "SSH-VPN will work without it (UDP forwarding disabled)."
     fi
 }
 
@@ -302,7 +292,7 @@ create_systemd_service() {
 
     cat > /etc/systemd/system/sshfortress.service <<EOF
 [Unit]
-Description=SSH Fortress — Enterprise SSH Manager
+Description=SSH-VPN — Enterprise SSH Manager
 After=network.target
 
 [Service]
@@ -363,21 +353,17 @@ verify_installation() {
 
 print_success() {
     echo ""
-    echo -e "${GREEN}  ╔═══════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}  ║                                                       ║${NC}"
-    echo -e "${GREEN}  ║   ✓  SSH Fortress installed successfully!             ║${NC}"
-    echo -e "${GREEN}  ║                                                       ║${NC}"
-    echo -e "${GREEN}  ╚═══════════════════════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}  ✓  SSH-VPN installed successfully!${NC}"
     echo ""
     echo -e "  ${BOLD}Quick Start:${NC}"
-    echo -e "  ${CYAN}┌─────────────────────────────────────────────┐${NC}"
-    echo -e "  ${CYAN}│${NC}  Run the manager:  ${WHITE}${BOLD}sshfortress${NC}              ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  Short command:    ${WHITE}${BOLD}sshf${NC}                     ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  Legacy command:   ${WHITE}${BOLD}menu${NC}                     ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}                                             ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  Edit config:      ${DIM}nano /etc/sshfortress/config.yaml${NC}  ${CYAN}│${NC}"
-    echo -e "  ${CYAN}│${NC}  View version:     ${DIM}sshfortress version${NC}  ${CYAN}│${NC}"
-    echo -e "  ${CYAN}└─────────────────────────────────────────────┘${NC}"
+    echo -e "  ${CYAN}┌──────────────────────────────────────────────────┐${NC}"
+    echo -e "  ${CYAN}│${NC}  Run the manager:  ${WHITE}${BOLD}sshfortress${NC}                   ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  Short command:    ${WHITE}${BOLD}sshf${NC}                          ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  Legacy command:   ${WHITE}${BOLD}menu${NC}                          ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}                                                  ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  Edit config:      ${DIM}nano /etc/sshfortress/config.yaml${NC} ${CYAN}│${NC}"
+    echo -e "  ${CYAN}│${NC}  View version:     ${DIM}sshfortress version${NC}               ${CYAN}│${NC}"
+    echo -e "  ${CYAN}└──────────────────────────────────────────────────┘${NC}"
     echo ""
     echo -e "  ${DIM}Documentation: https://github.com/${REPO}${NC}"
     echo ""
@@ -386,7 +372,7 @@ print_success() {
 # ─── Uninstall ───────────────────────────────────────────────────────────────
 uninstall() {
     print_banner
-    step "Uninstalling SSH Fortress"
+    step "Uninstalling SSH-VPN"
 
     rm -f "${INSTALL_DIR}/${APP_NAME}"
     rm -f /usr/local/bin/sshf
