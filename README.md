@@ -105,33 +105,6 @@ bash <(curl -fsSL https://raw.githubusercontent.com/SandBaad/SSH-VPN/main/script
 
 ---
 
-## 🖥️ Terminal UI Preview
-
-```
-  ╔═══════════════════╗  ┌──────────────────────────────────────────────────────┐
-  ║     SSH-VPN       ║  │  📊 DASHBOARD                                       │
-  ╚═══════════════════╝  │                                                      │
-                          │  ╭─────────────────────╮  ╭─────────────────────╮   │
-  v1.0.0                  │  │ 🖥️ Server Info       │  │ 📈 Resources         │   │
-  ─────────────────────   │  │ Hostname: vps-01    │  │ Memory: 1.2/4.0 GB  │   │
-                          │  │ OS: Ubuntu 22.04    │  │ ██████████░░░░ 30%  │   │
-  ▸ 📊  Dashboard        │  │ IP: 185.x.x.x      │  │ Disk:   12/50 GB    │   │
-    👤  Users             │  │ Uptime: 45d 3h      │  │ ████░░░░░░░░░░ 24%  │   │
-    🔐  SSH Tunnels       │  ╰─────────────────────╯  ╰─────────────────────╯   │
-    🌐  BadVPN            │                                                      │
-    📡  Monitor           │  ╭─────────────────────╮  ╭─────────────────────╮   │
-    ⚡  Optimizer          │  │ 🔌 Services          │  │ 📊 Quick Stats       │   │
-    💾  Backup            │  │ SSH: ✓ Running       │  │ Users: 12            │   │
-    ⚙️  Settings          │  │ Ports: 22, 443      │  │ Sessions: 5          │   │
-                          │  │ BadVPN: ✓ Running    │  │ Time: 15:42:30      │   │
-  ─────────────────────   │  │ Tunnels: 5 active   │  │                      │   │
-  tab: switch focus       │  ╰─────────────────────╯  ╰─────────────────────╯   │
-  q: quit                 └──────────────────────────────────────────────────────┘
-                            tab:focus  ↑↓:nav  enter:select  r:refresh  q:quit
-```
-
----
-
 ## 📦 Installation
 
 ### Method 1: Auto-Installer (Recommended)
