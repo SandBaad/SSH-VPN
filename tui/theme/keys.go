@@ -1,6 +1,6 @@
 package theme
 
-import "github.com/charmbracelet/bubbletea"
+import tea "github.com/charmbracelet/bubbletea"
 
 // Key constants for navigation.
 const (
@@ -45,6 +45,7 @@ func DefaultKeyMap() KeyMap {
 }
 
 // IsQuit returns true if the message is a quit key.
-func IsQuit(msg bubbletea.KeyMsg) bool {
+func IsQuit(msg tea.KeyMsg) bool {
 	return msg.String() == KeyQuit
 }
+
