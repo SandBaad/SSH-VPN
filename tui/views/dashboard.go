@@ -7,7 +7,7 @@ import (
 
 	"sshfortress/internal/system"
 	"sshfortress/internal/tunnel"
-	apptheme "sshfortress/tui"
+	apptheme "sshfortress/tui/theme"
 
 	"github.com/charmbracelet/lipgloss"
 )

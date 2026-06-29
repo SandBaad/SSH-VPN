@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"sshfortress/internal/store"
-	apptheme "sshfortress/tui"
+	apptheme "sshfortress/tui/theme"
 )
 
 // MonitorState holds data for the monitor view.

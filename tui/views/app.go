@@ -11,7 +11,7 @@ import (
 	"sshfortress/internal/system"
 	"sshfortress/internal/tunnel"
 	"sshfortress/internal/user"
-	apptheme "sshfortress/tui"
+	apptheme "sshfortress/tui/theme"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

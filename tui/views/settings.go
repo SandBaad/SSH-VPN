@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	apptheme "sshfortress/tui"
+	apptheme "sshfortress/tui/theme"
 
 	"github.com/charmbracelet/lipgloss"
 )

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"sshfortress/internal/tunnel"
-	apptheme "sshfortress/tui"
+	apptheme "sshfortress/tui/theme"
 )
 
 // TunnelState holds data for the tunnels view.

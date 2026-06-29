@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"sshfortress/internal/system"
-	apptheme "sshfortress/tui"
+	apptheme "sshfortress/tui/theme"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

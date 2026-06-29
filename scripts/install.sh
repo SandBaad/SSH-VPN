@@ -203,7 +203,7 @@ build_from_source() {
     cd "$tmpdir"
 
     # Ensure go.sum exists for dependency verification.
-    go mod download
+    go mod tidy
 
     go build -ldflags "-s -w -X main.Version=1.0.0" -o "${INSTALL_DIR}/${APP_NAME}" .
     chmod +x "${INSTALL_DIR}/${APP_NAME}"
