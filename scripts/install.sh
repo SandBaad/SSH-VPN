@@ -173,7 +173,7 @@ build_from_source() {
 
     if ! command -v go &>/dev/null; then
         info "Installing Go..."
-        local go_version="1.22.4"
+        local go_version="1.23.4"
         local go_arch="amd64"
         [[ "$ARCH" == "aarch64" ]] && go_arch="arm64"
 
