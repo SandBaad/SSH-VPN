@@ -1,0 +1,26 @@
+# Binaries
+build/
+sshfortress
+sshfortress-*
+*.exe
+
+# Go
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data (don't commit runtime data)
+*.db
+backups/
+
+# Previously cloned repos
+CF-Scanner-Pro/
