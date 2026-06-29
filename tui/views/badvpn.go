@@ -8,6 +8,7 @@ import (
 	apptheme "sshfortress/tui/theme"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // BadVPNState holds data for the BadVPN view.
