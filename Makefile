@@ -8,13 +8,13 @@ LDFLAGS := -ldflags "-s -w -X main.Version=$(VERSION)"
 all: linux-amd64 linux-arm64
 
 build:
-	go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) ./cmd/sshfortress/
+	go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) .
 
 linux-amd64:
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64 ./cmd/sshfortress/
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64 .
 
 linux-arm64:
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-linux-arm64 ./cmd/sshfortress/
+	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME)-linux-arm64 .
 
 clean:
 	rm -rf $(BUILD_DIR)

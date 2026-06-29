@@ -169,6 +169,18 @@ download_binary() {
 build_from_source() {
     info "Checking for Go compiler..."
 
+    # Ensure git is available for cloning.
+    if ! command -v git &>/dev/null; then
+        info "Installing git..."
+        if command -v apt-get &>/dev/null; then
+            apt-get install -y -qq git &>/dev/null
+        elif command -v yum &>/dev/null; then
+            yum install -y -q git &>/dev/null
+        elif command -v dnf &>/dev/null; then
+            dnf install -y -q git &>/dev/null
+        fi
+    fi
+
     if ! command -v go &>/dev/null; then
         info "Installing Go..."
         local go_version="1.22.4"
@@ -184,12 +196,29 @@ build_from_source() {
 
     info "Cloning repository..."
     local tmpdir=$(mktemp -d)
-    git clone --depth 1 "https://github.com/${REPO}.git" "$tmpdir" 2>/dev/null
+    if ! git clone --depth 1 "https://github.com/${REPO}.git" "$tmpdir"; then
+        error "Failed to clone repository from https://github.com/${REPO}.git"
+        rm -rf "$tmpdir"
+        exit 1
+    fi
+
+    # Validate cloned repo structure.
+    if [[ ! -f "$tmpdir/go.mod" ]]; then
+        error "Cloned repository is missing go.mod. Aborting."
+        rm -rf "$tmpdir"
+        exit 1
+    fi
 
     info "Building binary..."
     cd "$tmpdir"
-    go build -ldflags "-s -w -X main.Version=1.0.0" -o "${INSTALL_DIR}/${APP_NAME}" ./cmd/sshfortress/
+
+    # Ensure go.sum exists for dependency verification.
+    go mod download
+
+    go build -ldflags "-s -w -X main.Version=1.0.0" -o "${INSTALL_DIR}/${APP_NAME}" .
     chmod +x "${INSTALL_DIR}/${APP_NAME}"
+
+    cd /
     rm -rf "$tmpdir"
 
     success "Built and installed to ${INSTALL_DIR}/${APP_NAME}"
