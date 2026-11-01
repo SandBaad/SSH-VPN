@@ -1,0 +1,30 @@
+name: Release
+
+# Push a tag like v2.0.0 to publish binaries for the one-line installer.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: test
+        run: go test -count=1 ./...
+      - name: build + checksums
+        run: make checksums VERSION="${GITHUB_REF_NAME#v}"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/sshfortress-linux-amd64
+            build/sshfortress-linux-arm64
+            build/sshfortress-linux-armv7
+            build/sha256sums.txt
+          generate_release_notes: true
