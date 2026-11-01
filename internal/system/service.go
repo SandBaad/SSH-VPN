@@ -61,7 +61,7 @@ func StartService(name string) error {
 
 // GetManagedServices returns the status of all SSH Fortress managed services.
 func GetManagedServices() []ServiceStatus {
-	services := []string{"ssh", "sshd", "badvpn-udpgw"}
+	services := []string{"ssh", "sshd", "sshfortress"}
 	var result []ServiceStatus
 
 	for _, name := range services {

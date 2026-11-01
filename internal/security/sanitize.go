@@ -30,6 +30,7 @@ func ValidateUsername(username string) error {
 		"sys": true, "sync": true, "games": true, "man": true,
 		"mail": true, "news": true, "uucp": true, "proxy": true,
 		"www-data": true, "nobody": true, "sshd": true, "systemd-network": true,
+		"sshvpn": true, "ubuntu": true, "debian": true, "centos": true, "postgres": true, "mysql": true,
 	}
 	if reserved[strings.ToLower(username)] {
 		return fmt.Errorf("username %q is reserved and cannot be used", username)
@@ -81,6 +82,10 @@ func SanitizeShellArg(s string) string {
 }
 
 // ValidatePassword checks if a password meets minimum requirements.
+// Passwords go to chpasswd on stdin (never through a shell), so the only
+// characters that are truly unsafe are ':' (field separator), whitespace and
+// control characters. Quotes and backslashes are rejected too because many
+// VPN apps mangle them in their config strings.
 func ValidatePassword(password string) error {
 	if len(password) < 6 {
 		return fmt.Errorf("password must be at least 6 characters")
@@ -88,10 +93,12 @@ func ValidatePassword(password string) error {
 	if len(password) > 128 {
 		return fmt.Errorf("password must be at most 128 characters")
 	}
-	// Check for shell-dangerous characters that could cause issues in system passwd.
-	for _, ch := range shellDangerChars {
-		if strings.Contains(password, ch) {
-			return fmt.Errorf("password contains disallowed character %q", ch)
+	for _, r := range password {
+		switch {
+		case r < 0x21 || r > 0x7e:
+			return fmt.Errorf("password may only contain printable ASCII characters without spaces")
+		case r == ':' || r == '"' || r == '\'' || r == '\\' || r == '`':
+			return fmt.Errorf("password contains disallowed character %q", r)
 		}
 	}
 	return nil

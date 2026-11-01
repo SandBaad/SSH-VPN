@@ -16,13 +16,13 @@ var (
 	ColorInfo      = lipgloss.Color("#8BE9FD") // Light cyan
 
 	// Neutral colors
-	ColorBg        = lipgloss.Color("#0D1117") // Deep dark background
-	ColorBgAlt     = lipgloss.Color("#161B22") // Slightly lighter background
-	ColorBgPanel   = lipgloss.Color("#1C2333") // Panel background
-	ColorBorder    = lipgloss.Color("#30363D") // Border gray
-	ColorFg        = lipgloss.Color("#E6EDF3") // Light text
-	ColorFgDim     = lipgloss.Color("#8B949E") // Dimmed text
-	ColorFgMuted   = lipgloss.Color("#484F58") // Very muted text
+	ColorBg      = lipgloss.Color("#0D1117") // Deep dark background
+	ColorBgAlt   = lipgloss.Color("#161B22") // Slightly lighter background
+	ColorBgPanel = lipgloss.Color("#1C2333") // Panel background
+	ColorBorder  = lipgloss.Color("#30363D") // Border gray
+	ColorFg      = lipgloss.Color("#E6EDF3") // Light text
+	ColorFgDim   = lipgloss.Color("#8B949E") // Dimmed text
+	ColorFgMuted = lipgloss.Color("#484F58") // Very muted text
 )
 
 // ─── Reusable Styles ────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ var (
 	// Label (left side of a key-value pair).
 	StyleLabel = lipgloss.NewStyle().
 			Foreground(ColorFgDim).
-			Width(20)
+			Width(16)
 
 	// Value (right side of a key-value pair).
 	StyleValue = lipgloss.NewStyle().
@@ -138,15 +138,15 @@ var (
 // ─── Box Drawing Characters ─────────────────────────────────────────────────
 
 const (
-	BoxHorizontal = "─"
-	BoxVertical   = "│"
-	BoxTopLeft    = "╭"
-	BoxTopRight   = "╮"
-	BoxBottomLeft = "╰"
+	BoxHorizontal  = "─"
+	BoxVertical    = "│"
+	BoxTopLeft     = "╭"
+	BoxTopRight    = "╮"
+	BoxBottomLeft  = "╰"
 	BoxBottomRight = "╯"
-	BoxCross      = "┼"
-	BoxTeeRight   = "├"
-	BoxTeeLeft    = "┤"
+	BoxCross       = "┼"
+	BoxTeeRight    = "├"
+	BoxTeeLeft     = "┤"
 
 	BulletActive   = "●"
 	BulletInactive = "○"

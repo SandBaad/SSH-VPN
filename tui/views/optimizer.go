@@ -4,121 +4,67 @@ import (
 	"fmt"
 	"strings"
 
-	"sshfortress/internal/system"
+	"sshfortress/internal/netopt"
 	apptheme "sshfortress/tui/theme"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// OptimizerState holds data for the optimizer view.
+// OptimizerState holds kernel tuning status.
 type OptimizerState struct {
-	Params  []system.SysctlParam
+	Params  []netopt.Param
 	Message string
 }
 
-func (a *App) renderOptimizer() string {
+func loadOptimizer(a *App) OptimizerState { return OptimizerState{Params: netopt.Status(a.cfg)} }
+
+func (a *App) renderOptimizer(w int) string {
 	var b strings.Builder
-
-	title := apptheme.StyleTitle.Render(" ⚡ NETWORK OPTIMIZER ")
-	b.WriteString(title)
-	b.WriteString("\n\n")
-
-	if a.optState.Message != "" {
-		b.WriteString(apptheme.StyleSuccess.Render("  " + a.optState.Message))
-		b.WriteString("\n\n")
-	}
-
-	// Stats.
-	applied := 0
-	for _, p := range a.optState.Params {
-		if p.Applied {
-			applied++
-		}
-	}
-	total := len(a.optState.Params)
-
-	percent := float64(0)
+	b.WriteString(title("⚡ NETWORK OPTIMIZER"))
+	applied, total := netopt.Score(a.opt.Params)
+	pct := 0.0
 	if total > 0 {
-		percent = float64(applied) / float64(total) * 100
+		pct = float64(applied) / float64(total) * 100
 	}
-
-	bar := renderProgressBar(percent, 30)
-	b.WriteString(fmt.Sprintf("  Optimization: %s %.0f%% (%d/%d params applied)\n\n",
-		bar, percent, applied, total))
-
-	// Parameter table.
-	headerStyle := apptheme.StyleTableHeader
-	header := fmt.Sprintf("  %-4s %-38s %-18s %-18s",
-		headerStyle.Render(""),
-		headerStyle.Render("PARAMETER"),
-		headerStyle.Render("CURRENT"),
-		headerStyle.Render("OPTIMAL"),
-	)
-	b.WriteString(header)
-	b.WriteString("\n")
-	b.WriteString(apptheme.StyleDim.Render("  " + strings.Repeat("─", 78)))
-	b.WriteString("\n")
-
-	for _, p := range a.optState.Params {
-		icon := apptheme.StyleDanger.Render(apptheme.CrossMark)
+	b.WriteString(fmt.Sprintf("  %s %.0f%%  (%d/%d)   BBR: %s\n\n", renderProgressBar(pct, 30), pct, applied, total, ok(netopt.BBRActive(), "on", "off")))
+	widths := []int{2, 36, 20, 20}
+	b.WriteString(header(widths, "", "SETTING", "CURRENT", "TARGET"))
+	for _, p := range a.opt.Params {
+		mark := apptheme.StyleDanger.Render(apptheme.CrossMark)
+		cur := apptheme.StyleDanger.Render(p.Current)
 		if p.Applied {
-			icon = apptheme.StyleSuccess.Render(apptheme.CheckMark)
+			mark = apptheme.StyleSuccess.Render(apptheme.CheckMark)
+			cur = apptheme.StyleSuccess.Render(p.Current)
+		} else if !p.Supported {
+			mark = apptheme.StyleDim.Render("-")
+			cur = apptheme.StyleDim.Render("n/a")
 		}
-
-		current := p.CurrentValue
-		if len(current) > 16 {
-			current = current[:16] + "…"
-		}
-		optimal := p.OptimalValue
-		if len(optimal) > 16 {
-			optimal = optimal[:16] + "…"
-		}
-
-		// Highlight differences.
-		currentStyle := apptheme.StyleDanger
-		if p.Applied {
-			currentStyle = apptheme.StyleSuccess
-		}
-
-		row := fmt.Sprintf("  %s  %-38s %-18s %-18s",
-			icon,
-			apptheme.StyleDim.Render(p.Key),
-			currentStyle.Render(current),
-			apptheme.StyleInfo.Render(optimal),
-		)
-		b.WriteString(row)
-		b.WriteString("\n")
+		b.WriteString(row(widths, mark, apptheme.StyleDim.Render(p.Key), cur, apptheme.StyleInfo.Render(p.Value)) + "\n")
 	}
-
-	b.WriteString("\n")
-	b.WriteString(apptheme.StyleSubtitle.Render("  Actions"))
-	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("  %s Apply all optimizations\n", apptheme.StyleKeyBind.Render("[a]")))
-	b.WriteString(fmt.Sprintf("  %s Reset to system defaults\n", apptheme.StyleKeyBind.Render("[x]")))
-	b.WriteString("\n")
-	b.WriteString(apptheme.StyleKeyHelp.Render("  r:refresh  esc:back"))
-
+	b.WriteString(keyHelp("a apply all (persists across reboots)   x restore original values"))
 	return b.String()
 }
 
-func (a *App) updateOptimizer(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a *App) updateOptimizer(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "a":
-		count, err := a.optimizer.Apply()
-		if err != nil {
-			a.optState.Message = fmt.Sprintf("Applied %d params (some errors: %v)", count, err)
-		} else {
-			a.optState.Message = fmt.Sprintf("Successfully applied %d optimizations!", count)
+		return func() tea.Msg {
+			r, err := netopt.Apply(a.cfg)
+			if err != nil {
+				return opDoneMsg{err: err, reload: true}
+			}
+			text := fmt.Sprintf("applied %d/%d settings", r.Applied, r.Total)
+			if len(r.Warnings) > 0 {
+				text += " — " + strings.Join(r.Warnings, "; ")
+			}
+			return opDoneMsg{text: text, reload: true}
 		}
-		a.optState.Params = a.optimizer.GetRecommendedParams()
-
 	case "x":
-		if err := a.optimizer.Reset(); err != nil {
-			a.optState.Message = "Reset error: " + err.Error()
-		} else {
-			a.optState.Message = "Reset to system defaults"
-		}
-		a.optState.Params = a.optimizer.GetRecommendedParams()
+		a.modal = confirmModal("Reset", "Restore the kernel settings from before SSH-VPN?", func() tea.Cmd {
+			return func() tea.Msg {
+				return opDoneMsg{text: "restored original settings", err: netopt.Reset(a.cfg), reload: true}
+			}
+		})
 	}
-	return a, nil
+	return nil
 }

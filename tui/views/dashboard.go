@@ -5,155 +5,158 @@ import (
 	"strings"
 	"time"
 
+	"sshfortress/internal/card"
+	"sshfortress/internal/firewall"
+	"sshfortress/internal/netopt"
+	"sshfortress/internal/procfs"
+	"sshfortress/internal/state"
+	"sshfortress/internal/store"
 	"sshfortress/internal/system"
-	"sshfortress/internal/tunnel"
 	apptheme "sshfortress/tui/theme"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
-// DashboardState holds data for the dashboard view.
+// DashboardState holds data for the dashboard.
 type DashboardState struct {
-	SysInfo        system.Info
-	SSHStatus      tunnel.SSHStatus
-	BadVPNStatus   tunnel.BadVPNStatus
-	UserCount      int
-	ActiveSessions int
+	Loaded    bool
+	SysInfo   system.Info
+	Daemon    *state.State
+	DaemonOK  bool
+	BBR       bool
+	CC        string
+	Firewall  bool
+	Users     int
+	Active    int
+	Expired   int
+	Locked    int
+	Traffic   int64
+	SSHActive bool
 }
 
-func (a *App) renderDashboard() string {
-	var b strings.Builder
-
-	title := apptheme.StyleTitle.Render(" 📊 DASHBOARD ")
-	b.WriteString(title)
-	b.WriteString("\n\n")
-
-	d := a.dashState
-
-	// ─── Server Info Card ───────────────────────────────────────────────
-	serverInfo := a.renderCard("🖥️  Server Information", []cardRow{
-		{"Hostname", d.SysInfo.Hostname},
-		{"OS", d.SysInfo.OS},
-		{"Kernel", d.SysInfo.Kernel},
-		{"CPU", fmt.Sprintf("%s (%d cores)", d.SysInfo.CPUModel, d.SysInfo.CPUCores)},
-		{"Public IP", d.SysInfo.PublicIP},
-		{"Uptime", system.FormatUptime(d.SysInfo.Uptime)},
-		{"Load Avg", d.SysInfo.LoadAvg},
-	})
-
-	// ─── Resources Card ─────────────────────────────────────────────────
-	memBar := renderProgressBar(d.SysInfo.MemPercent, 20)
-	diskBar := renderProgressBar(d.SysInfo.DiskPercent, 20)
-
-	resourcesInfo := a.renderCard("📈  Resources", []cardRow{
-		{"Memory", fmt.Sprintf("%s / %s  %s %.0f%%",
-			system.FormatBytes(d.SysInfo.MemUsed),
-			system.FormatBytes(d.SysInfo.MemTotal),
-			memBar,
-			d.SysInfo.MemPercent,
-		)},
-		{"Disk", fmt.Sprintf("%s / %s  %s %.0f%%",
-			system.FormatBytes(d.SysInfo.DiskUsed),
-			system.FormatBytes(d.SysInfo.DiskTotal),
-			diskBar,
-			d.SysInfo.DiskPercent,
-		)},
-	})
-
-	// ─── Service Status Card ────────────────────────────────────────────
-	sshStatusText := apptheme.StyleDanger.Render(apptheme.CrossMark + " Stopped")
-	if d.SSHStatus.Running {
-		sshStatusText = apptheme.StyleSuccess.Render(apptheme.CheckMark + " Running")
+func loadDashboard(a *App) DashboardState {
+	d := DashboardState{Loaded: true, SysInfo: system.GetInfo()}
+	if st, err := state.Read(); err == nil {
+		d.Daemon = st
+		d.DaemonOK = st.Fresh()
 	}
-
-	badvpnStatusText := apptheme.StyleDanger.Render(apptheme.CrossMark + " Stopped")
-	if d.BadVPNStatus.Running {
-		badvpnStatusText = apptheme.StyleSuccess.Render(apptheme.CheckMark + " Running")
-	} else if !d.BadVPNStatus.Installed {
-		badvpnStatusText = apptheme.StyleWarning.Render("○ Not Installed")
-	}
-
-	portsStr := "none"
-	if len(d.SSHStatus.ListeningPorts) > 0 {
-		portStrs := make([]string, len(d.SSHStatus.ListeningPorts))
-		for i, p := range d.SSHStatus.ListeningPorts {
-			portStrs[i] = fmt.Sprintf("%d", p)
+	d.BBR = netopt.BBRActive()
+	d.CC, _ = netopt.Read("net.ipv4.tcp_congestion_control")
+	d.Firewall = a.cfg.Firewall.Enabled && firewall.Active()
+	if tcp, err := procfs.ReadTCP(); err == nil {
+		for _, p := range a.cfg.SSH.Ports {
+			if tcp.ListenPorts[uint16(p)] {
+				d.SSHActive = true
+			}
 		}
-		portsStr = strings.Join(portStrs, ", ")
 	}
+	if us, err := a.db.ListUsers(); err == nil {
+		now := time.Now()
+		d.Users = len(us)
+		for _, u := range us {
+			d.Traffic += u.TrafficUsed
+			switch {
+			case u.IsExpired(now) || u.LockReason == store.LockExpired:
+				d.Expired++
+			case u.Disabled:
+				d.Locked++
+			default:
+				d.Active++
+			}
+		}
+	}
+	return d
+}
 
-	servicesInfo := a.renderCard("🔌  Services", []cardRow{
-		{"SSH Daemon", sshStatusText},
-		{"SSH Ports", portsStr},
-		{"BadVPN (udpgw)", badvpnStatusText},
-		{"Active Tunnels", fmt.Sprintf("%d", d.SSHStatus.ActiveConns)},
-	})
+func (a *App) renderDashboard(w int) string {
+	var b strings.Builder
+	b.WriteString(title("📊 DASHBOARD"))
+	d := a.dash
+	if !d.Loaded {
+		return b.String() + "  loading…"
+	}
+	cw := cardWidth(w)
+	si := d.SysInfo
+	server := a.renderCard("🖥  Server", []cardRow{
+		{"Host", card.Host(a.cfg)},
+		{"OS", si.OS},
+		{"Kernel", si.Kernel},
+		{"CPU", fmt.Sprintf("%d cores · load %s", si.CPUCores, strings.Fields(si.LoadAvg + " -")[0])},
+		{"Uptime", system.FormatUptime(si.Uptime)},
+		{"Memory", fmt.Sprintf("%s %.0f%%", renderProgressBar(si.MemPercent, 12), si.MemPercent)},
+		{"Disk", fmt.Sprintf("%s %.0f%%", renderProgressBar(si.DiskPercent, 12), si.DiskPercent)},
+	}, cw)
 
-	// ─── Quick Stats Card ───────────────────────────────────────────────
-	statsInfo := a.renderCard("📊  Quick Stats", []cardRow{
-		{"Total Users", fmt.Sprintf("%d", d.UserCount)},
-		{"Active Sessions", fmt.Sprintf("%d", d.ActiveSessions)},
-		{"Server Time", time.Now().Format("2006-01-02 15:04:05")},
-	})
+	online, speed, udpTxt, gwTxt := "-", "-", apptheme.StyleDim.Render("off"), apptheme.StyleDim.Render("off")
+	if d.DaemonOK {
+		st := d.Daemon
+		online = fmt.Sprintf("%d sessions", len(st.Sessions))
+		speed = system.FormatBytes(st.TotalBps) + "/s"
+		if st.UDPGW != nil && st.UDPGW.Mode != "off" {
+			udpTxt = ok(st.UDPGW.Healthy, st.UDPGW.Mode, "down")
+			if st.UDPGW.Stats != nil {
+				udpTxt += apptheme.StyleDim.Render(fmt.Sprintf(" · %d flows", st.UDPGW.Stats.Flows))
+			}
+		}
+		if st.Gateway != nil {
+			gwTxt = ok(len(st.Gateway.Ports) > 0, fmt.Sprintf("%v", st.Gateway.Ports), "no ports")
+			if len(st.Gateway.Failed) > 0 {
+				gwTxt += apptheme.StyleWarning.Render(fmt.Sprintf(" (%d failed)", len(st.Gateway.Failed)))
+			}
+		}
+	}
+	bbr := ok(d.BBR, "BBR", d.CC)
+	services := a.renderCard("🔌  Services", []cardRow{
+		{"Daemon", ok(d.DaemonOK, "running", "not running")},
+		{"SSH server", ok(d.SSHActive, "listening "+ints(a.cfg.SSH.Ports), "not listening")},
+		{"UDP gateway", udpTxt},
+		{"WS/TLS gateway", gwTxt},
+		{"Congestion", bbr},
+		{"Firewall", ok(d.Firewall, "active", "off")},
+	}, cw)
 
-	// Layout: 2x2 grid.
-	topRow := lipgloss.JoinHorizontal(lipgloss.Top, serverInfo, "  ", resourcesInfo)
-	bottomRow := lipgloss.JoinHorizontal(lipgloss.Top, servicesInfo, "  ", statsInfo)
+	stats := a.renderCard("👥  Users", []cardRow{
+		{"Total", fmt.Sprintf("%d", d.Users)},
+		{"Active", apptheme.StyleSuccess.Render(fmt.Sprintf("%d", d.Active))},
+		{"Expired", apptheme.StyleDanger.Render(fmt.Sprintf("%d", d.Expired))},
+		{"Locked", apptheme.StyleWarning.Render(fmt.Sprintf("%d", d.Locked))},
+		{"Online", online},
+		{"Throughput", speed},
+		{"Traffic (all)", card.FormatBytes(d.Traffic)},
+	}, cw)
 
-	b.WriteString(topRow)
-	b.WriteString("\n")
-	b.WriteString(bottomRow)
+	var ev []cardRow
+	if d.Daemon != nil {
+		events := d.Daemon.Events
+		if len(events) > 6 {
+			events = events[len(events)-6:]
+		}
+		for i := len(events) - 1; i >= 0; i-- {
+			ev = append(ev, cardRow{events[i].Time.Format("01-02 15:04"), trunc(events[i].Text, cw-22)})
+		}
+	}
+	if len(ev) == 0 {
+		ev = []cardRow{{"", apptheme.StyleDim.Render("no events yet")}}
+	}
+	events := a.renderCard("📜  Recent activity", ev, cw)
 
+	if twoColumns(w) {
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, server, "  ", services))
+		b.WriteString("\n")
+		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, stats, "  ", events))
+	} else {
+		b.WriteString(lipgloss.JoinVertical(lipgloss.Left, services, stats, server))
+	}
+	if !d.DaemonOK {
+		b.WriteString("\n" + apptheme.StyleWarning.Render("  ! The daemon isn't running: limits, quotas and the UDP gateway are off.  Fix: systemctl enable --now sshfortress"))
+	}
 	return b.String()
 }
 
-type cardRow struct {
-	Label string
-	Value string
-}
-
-func (a *App) renderCard(title string, rows []cardRow) string {
-	width := (a.width - 30) / 2
-	if width < 40 {
-		width = 40
+func trunc(s string, n int) string {
+	r := []rune(s)
+	if n < 4 || len(r) <= n {
+		return s
 	}
-
-	var content strings.Builder
-	content.WriteString(apptheme.StyleSubtitle.Render(title))
-	content.WriteString("\n")
-
-	for _, row := range rows {
-		label := apptheme.StyleLabel.Render(row.Label)
-		value := apptheme.StyleValue.Render(row.Value)
-		content.WriteString(fmt.Sprintf("%s %s\n", label, value))
-	}
-
-	return apptheme.StylePanel.
-		Width(width).
-		Render(content.String())
-}
-
-func renderProgressBar(percent float64, width int) string {
-	if percent > 100 {
-		percent = 100
-	}
-	filled := int(percent / 100 * float64(width))
-	if filled > width {
-		filled = width
-	}
-
-	var color lipgloss.Color
-	switch {
-	case percent >= 90:
-		color = apptheme.ColorDanger
-	case percent >= 70:
-		color = apptheme.ColorWarning
-	default:
-		color = apptheme.ColorSuccess
-	}
-
-	bar := lipgloss.NewStyle().Foreground(color).Render(strings.Repeat("█", filled))
-	empty := lipgloss.NewStyle().Foreground(apptheme.ColorFgMuted).Render(strings.Repeat("░", width-filled))
-
-	return bar + empty
+	return string(r[:n-1]) + "…"
 }

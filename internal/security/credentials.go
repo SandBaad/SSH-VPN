@@ -8,6 +8,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -62,17 +63,21 @@ func VerifyPassword(password, encoded string) (bool, error) {
 }
 
 // GenerateRandomPassword generates a cryptographically secure random password.
+// It uses only letters and digits (no look-alike characters such as 0/O and
+// 1/l/I) so it is easy to type into a phone app and never needs escaping.
 func GenerateRandomPassword(length int) (string, error) {
 	if length < 8 {
 		length = 8
 	}
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*"
-	b := make([]byte, length)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+	const charset = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+	out := make([]byte, length)
+	max := big.NewInt(int64(len(charset)))
+	for i := range out {
+		n, err := rand.Int(rand.Reader, max) // uniform, no modulo bias
+		if err != nil {
+			return "", err
+		}
+		out[i] = charset[n.Int64()]
 	}
-	for i := range b {
-		b[i] = charset[int(b[i])%len(charset)]
-	}
-	return string(b), nil
+	return string(out), nil
 }

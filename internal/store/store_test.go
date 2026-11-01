@@ -109,3 +109,60 @@ func TestBackups(t *testing.T) {
 		t.Errorf("Backup ID = %q, want %q", backups[0].ID, "backup-001")
 	}
 }
+
+// The daemon, TUI and CLI are separate processes using the same file.
+// Each opens the DB per operation, so concurrent handles must not block.
+func TestConcurrentHandles(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "shared.db")
+	a, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Open(path)
+	if err != nil {
+		t.Fatalf("second handle blocked: %v", err)
+	}
+	if err := a.PutUser(&UserRecord{Username: "u1", MaxConnections: 1}); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 2)
+	for _, db := range []*DB{a, b} {
+		db := db
+		go func() {
+			for i := 0; i < 50; i++ {
+				if err := db.AddTraffic(map[string]int64{"u1": 10}, time.Now()); err != nil {
+					done <- err
+					return
+				}
+			}
+			done <- nil
+		}()
+	}
+	for i := 0; i < 2; i++ {
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+	}
+	u, err := b.GetUser("u1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.TrafficUsed != 1000 {
+		t.Fatalf("lost updates: used = %d, want 1000", u.TrafficUsed)
+	}
+	if _, err := a.UpdateUser("nope", func(*UserRecord) error { return nil }); err == nil {
+		t.Fatal("update of missing user should fail")
+	}
+}
+
+func TestQuotaAndExpiry(t *testing.T) {
+	now := time.Now()
+	u := UserRecord{ExpiresAt: now.Add(-time.Second), TrafficLimit: 100, TrafficUsed: 100}
+	if !u.IsExpired(now) || !u.QuotaExceeded() {
+		t.Fatal("should be expired and over quota")
+	}
+	u = UserRecord{ExpiresAt: now.Add(time.Hour), TrafficLimit: 0, TrafficUsed: 1 << 40}
+	if u.IsExpired(now) || u.QuotaExceeded() {
+		t.Fatal("unlimited user flagged")
+	}
+}

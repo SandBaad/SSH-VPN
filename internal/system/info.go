@@ -11,26 +11,27 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 // Info holds system information for the dashboard.
 type Info struct {
-	Hostname   string
-	OS         string
-	Kernel     string
-	Arch       string
-	Uptime     time.Duration
-	PublicIP   string
-	CPUModel   string
-	CPUCores   int
-	MemTotal   uint64 // bytes
-	MemUsed    uint64 // bytes
-	MemPercent float64
-	DiskTotal  uint64 // bytes
-	DiskUsed   uint64 // bytes
+	Hostname    string
+	OS          string
+	Kernel      string
+	Arch        string
+	Uptime      time.Duration
+	PublicIP    string
+	CPUModel    string
+	CPUCores    int
+	MemTotal    uint64 // bytes
+	MemUsed     uint64 // bytes
+	MemPercent  float64
+	DiskTotal   uint64 // bytes
+	DiskUsed    uint64 // bytes
 	DiskPercent float64
-	LoadAvg    string
+	LoadAvg     string
 }
 
 // NetTraffic holds network I/O counters.
@@ -126,7 +127,7 @@ func GetInfo() Info {
 	}
 
 	// Public IP
-	info.PublicIP = getPublicIP()
+	info.PublicIP = PublicIP()
 
 	return info
 }
@@ -193,36 +194,57 @@ func parseMemInfo(data string) map[string]uint64 {
 	return result
 }
 
+var (
+	publicIPMu    sync.Mutex
+	publicIPCache string
+	publicIPAt    time.Time
+)
+
+// PublicIP returns the server's public IPv4 address (cached for 10 min).
+func PublicIP() string {
+	publicIPMu.Lock()
+	defer publicIPMu.Unlock()
+	if publicIPCache != "" && time.Since(publicIPAt) < 10*time.Minute {
+		return publicIPCache
+	}
+	publicIPCache, publicIPAt = getPublicIP(), time.Now()
+	return publicIPCache
+}
+
 func getPublicIP() string {
-	// Try multiple interfaces to find a non-loopback, non-private IP.
+	// Prefer a public address on an interface (no network call).
 	ifaces, err := net.Interfaces()
-	if err != nil {
-		return "unknown"
-	}
-
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
-		if err != nil {
-			continue
-		}
-		for _, addr := range addrs {
-			var ip net.IP
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
+	if err == nil {
+		for _, i := range ifaces {
+			addrs, err := i.Addrs()
+			if err != nil {
+				continue
 			}
-			if ip != nil && !ip.IsLoopback() && ip.To4() != nil && !ip.IsPrivate() {
-				return ip.String()
+			for _, addr := range addrs {
+				var ip net.IP
+				switch v := addr.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				}
+				v4 := ip.To4()
+				if v4 == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() {
+					continue
+				}
+				if v4[0] == 100 && v4[1]&0xC0 == 64 { // CGNAT 100.64.0.0/10
+					continue
+				}
+				return v4.String()
 			}
 		}
 	}
-
-	// Fallback: use external service.
-	out, err := exec.Command("curl", "-s", "--max-time", "3", "ifconfig.me").Output()
-	if err == nil && len(out) > 0 {
-		return strings.TrimSpace(string(out))
+	// Behind NAT (some clouds): ask an external service.
+	for _, url := range []string{"https://api.ipify.org", "https://ifconfig.me/ip", "https://icanhazip.com"} {
+		out, err := exec.Command("curl", "-4", "-fsS", "--max-time", "4", url).Output()
+		if ip := net.ParseIP(strings.TrimSpace(string(out))); err == nil && ip != nil {
+			return ip.String()
+		}
 	}
 	return "unknown"
 }
