@@ -18,9 +18,6 @@ vendor/
 .DS_Store
 Thumbs.db
 
-# Data (don't commit runtime data)
+# Runtime data
 *.db
 backups/
-
-# Previously cloned repos
-CF-Scanner-Pro/
